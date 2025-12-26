@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+
+# Render deployment script
+# Install dependencies using uv
+uv sync
+
+# Run tests to ensure quality
+uv run pytest -q

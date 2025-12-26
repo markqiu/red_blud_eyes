@@ -1,0 +1,102 @@
+name: Deploy to Cloud
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+      
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      
+      - name: Install dependencies
+        run: uv sync
+      
+      - name: Run tests
+        run: uv run pytest -q
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+      
+      - name: Install Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      
+      - name: Create .env placeholder
+        run: |
+          echo "APP_PASSWORD=${{ secrets.APP_PASSWORD || 'redblue' }}" > .env
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY || '' }}" >> .env
+          echo "OPENAI_MODEL=${{ secrets.OPENAI_MODEL || 'gpt-4' }}" >> .env
+          echo "SILICONFLOW_API_KEY=${{ secrets.SILICONFLOW_API_KEY || '' }}" >> .env
+          echo "SILICONFLOW_MODEL=${{ secrets.SILICONFLOW_MODEL || 'deepseek-v3' }}" >> .env
+      
+      - name: Build dependencies
+        run: uv sync
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    
+    # 支持多个部署平台的矩阵配置
+    strategy:
+      matrix:
+        platform: [render]  # 可添加: railway, heroku 等
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Deploy to Render
+        if: matrix.platform == 'render'
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$RENDER_DEPLOY_HOOK" ]; then
+            curl "$RENDER_DEPLOY_HOOK"
+          else
+            echo "Skipping Render deployment: RENDER_DEPLOY_HOOK not configured"
+          fi
+      
+      - name: Deploy to Railway
+        if: matrix.platform == 'railway'
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          if [ -n "$RAILWAY_TOKEN" ]; then
+            npm i -g @railway/cli
+            railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
+            railway deploy
+          else
+            echo "Skipping Railway deployment: RAILWAY_TOKEN not configured"
+          fi
+
+  notify:
+    needs: [test, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check deployment status
+        run: |
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "✅ Deployment successful!"
+          else
+            echo "⚠️ Deployment skipped or failed (check platform configuration)"
+          fi

@@ -1,0 +1,6 @@
+# This project uses `uv` for dependency management
+# For pip compatibility, install uv and run: uv pip compile pyproject.toml
+# Or use pyproject.toml directly with modern pip versions
+
+# For cloud platforms that require requirements.txt,
+# generate with: uv pip compile -o requirements.txt pyproject.toml
