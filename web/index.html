@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>红蓝眼谜题可视化验证</title>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --panel: #121a33;
+        --panel-2: #0f1730;
+        --text: #e7ecff;
+        --muted: #a9b3d6;
+        --border: rgba(231, 236, 255, 0.12);
+        --red: #ff4d6d;
+        --blue: #4d8bff;
+        --ok: #39d98a;
+        --warn: #ffcc66;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+        background: radial-gradient(1200px 800px at 20% 10%, #16224a 0%, var(--bg) 55%);
+        color: var(--text);
+      }
+      header {
+        padding: 20px 18px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(18, 26, 51, 0.75);
+        backdrop-filter: blur(8px);
+      }
+      header h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+      }
+      header p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+
+      main {
+        padding: 18px;
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: 14px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      @media (max-width: 980px) {
+        main { grid-template-columns: 1fr; }
+      }
+
+      .panel {
+        background: rgba(18, 26, 51, 0.78);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px;
+      }
+      .panel h2 {
+        margin: 0 0 10px;
+        font-size: 14px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 6px; }
+      input[type="number"], select {
+        width: 100%;
+        padding: 10px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--panel-2);
+        color: var(--text);
+        outline: none;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .btns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      button {
+        padding: 10px 10px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: #18224a;
+        color: var(--text);
+        cursor: pointer;
+        font-weight: 600;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      .kpi {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .kpi .card {
+        border-radius: 10px;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        padding: 10px;
+      }
+      .kpi .label { font-size: 11px; color: var(--muted); }
+      .kpi .value { font-size: 16px; font-weight: 800; margin-top: 4px; }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(15, 23, 48, 0.85);
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+      .dot.red { background: var(--red); }
+      .dot.blue { background: var(--blue); }
+      .dot.ok { background: var(--ok); }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .villagers {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+      @media (max-width: 980px) {
+        .villagers { grid-template-columns: repeat(2, 1fr); }
+      }
+      @media (max-width: 520px) {
+        .villagers { grid-template-columns: 1fr; }
+      }
+
+      .v {
+        border: 1px solid var(--border);
+        background: var(--panel-2);
+        border-radius: 12px;
+        padding: 10px;
+      }
+      .v .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+      }
+      .v .name { font-weight: 800; font-size: 13px; }
+      .v .meta { color: var(--muted); font-size: 12px; margin-top: 8px; line-height: 1.5; }
+      .v .status { font-size: 12px; color: var(--muted); margin-top: 8px; }
+      .v .status strong { color: var(--text); }
+
+      .split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      @media (max-width: 980px) {
+        .split { grid-template-columns: 1fr; }
+      }
+
+      pre {
+        margin: 0;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(15, 23, 48, 0.85);
+        color: var(--text);
+        font-size: 12px;
+        line-height: 1.45;
+        overflow: auto;
+        min-height: 220px;
+        white-space: pre-wrap;
+      }
+
+      .hint { color: var(--muted); font-size: 12px; line-height: 1.5; }
+      .ok { color: var(--ok); font-weight: 800; }
+      .warn { color: var(--warn); font-weight: 800; }
+
+      footer { padding: 10px 18px 24px; color: var(--muted); font-size: 12px; text-align: center; }
+      a { color: var(--text); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>红蓝眼谜题可视化验证</h1>
+      <p>实时展示：每个村民的视角、每日推理过程、知识层级演变、最终验证结果（本地后端驱动，可混合 OpenAI）。</p>
+    </header>
+
+    <div id="passwordPrompt" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+      <div style="background: #0b1020; border: 1px solid rgba(231, 236, 255, 0.12); border-radius: 12px; padding: 40px; text-align: center; max-width: 300px;">
+        <div style="font-size: 18px; font-weight: 700; color: #e7ecff; margin-bottom: 20px;">输入密码以访问</div>
+        <input type="password" id="passwordInput" placeholder="密码" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(231, 236, 255, 0.12); background: #121a33; color: #e7ecff; margin-bottom: 12px; outline: none;">
+        <button id="passwordBtn" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid rgba(231, 236, 255, 0.12); background: #18224a; color: #e7ecff; cursor: pointer; font-weight: 600;">确认</button>
+        <div id="passwordError" style="color: #ff4d6d; font-size: 12px; margin-top: 8px; display: none;">密码错误，请重试</div>
+      </div>
+    </div>
+
+    <main style="display: none;">
+      <section class="panel">
+        <h2>控制台</h2>
+
+        <div class="row">
+          <div>
+            <label for="numRed">红眼睛人数 N</label>
+            <input id="numRed" type="number" min="0" max="200" value="3" />
+          </div>
+          <div>
+            <label for="numBlue">蓝眼睛人数 M</label>
+            <input id="numBlue" type="number" min="0" max="200" value="2" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="villagerMode">村民类型模式</label>
+            <select id="villagerMode">
+              <option value="mixed_ends" selected>混合：两端 OpenAI，其余 dummy</option>
+              <option value="all_dummy">全部 dummy（完美归纳）</option>
+              <option value="all_openai">全部 OpenAI（真实反应）</option>
+            </select>
+          </div>
+          <div>
+            <label for="openaiStyle">OpenAI 风格</label>
+            <select id="openaiStyle">
+              <option value="social" selected>群体社会行为（social）</option>
+              <option value="ordinary">普通人（ordinary）</option>
+              <option value="rational">理性人（rational）</option>
+              <option value="absolute_rational">绝对理性（absolute_rational）</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="btns">
+          <button id="btnInit">初始化村庄</button>
+          <button id="btnAnnounce">游客宣布</button>
+          <button id="btnNext">下一天</button>
+          <button id="btnRunAll">跑到结束</button>
+          <button id="btnReset">重置</button>
+        </div>
+
+        <div style="height: 12px"></div>
+
+        <div class="kpi">
+          <div class="card">
+            <div class="label">当前天数</div>
+            <div class="value" id="kpiDay">0</div>
+          </div>
+          <div class="card">
+            <div class="label">宣布状态</div>
+            <div class="value" id="kpiAnnounce">未宣布</div>
+          </div>
+          <div class="card">
+            <div class="label">知识层级</div>
+            <div class="value" id="kpiKnowledge">0</div>
+          </div>
+          <div class="card">
+            <div class="label">验证结果</div>
+            <div class="value" id="kpiVerify">—</div>
+          </div>
+        </div>
+
+        <div style="height: 12px"></div>
+        <div class="hint">
+          - “游客宣布”会把“至少有一个红眼睛”变成公共知识，使得计时与递归推理链条启动。<br />
+          - 你可以先初始化，再宣布，再按“下一天”观察推理日志逐步展开。
+        </div>
+      </section>
+
+      <section class="grid">
+        <section class="panel">
+          <h2>村民视角（当前仍在村庄）</h2>
+          <div id="villagers" class="villagers"></div>
+        </section>
+
+        <section class="panel">
+          <h2>推理与事件</h2>
+          <div class="split">
+            <div>
+              <div style="display:flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <span class="pill"><span class="dot ok"></span>每日事件日志</span>
+              </div>
+              <pre id="dailyLog"></pre>
+            </div>
+            <div>
+              <div style="display:flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <span class="pill"><span class="dot red"></span>村民推理日志</span>
+                <select id="villagerSelect" aria-label="选择村民查看推理日志"></select>
+              </div>
+              <pre id="reasoningLog"></pre>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <footer>
+      启动方式：在项目根目录执行 <code>python -m http.server 8000</code>，然后访问 <a href="/web/">/web/</a>
+    </footer>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
