@@ -515,8 +515,9 @@ async function setupPasswordVerification() {
   const isAuthenticated = sessionStorage.getItem('authenticated') === 'true';
   if (isAuthenticated) {
     passwordPrompt.style.display = 'none';
-    mainEl.style.display = 'block';
-    return; // 密码已验证，直接初始化应用
+    mainEl.style.display = '';
+    init(); // 密码已验证，直接初始化应用
+    return;
   }
 
   // 显示密码提示框
@@ -540,7 +541,7 @@ async function setupPasswordVerification() {
       if (data.valid) {
         sessionStorage.setItem('authenticated', 'true');
         passwordPrompt.style.display = 'none';
-        mainEl.style.display = 'block';
+        mainEl.style.display = '';
         init(); // 初始化应用
       } else {
         passwordError.style.display = 'block';

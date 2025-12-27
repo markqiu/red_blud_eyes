@@ -41,11 +41,15 @@
 
       main {
         padding: 18px;
-        display: grid;
-        grid-template-columns: 360px 1fr;
-        gap: 14px;
-        max-width: 1200px;
+        max-width: 1320px;
         margin: 0 auto;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 420px minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
       }
 
       /* Always keep two-column layout (remove responsive collapse) */
@@ -131,13 +135,11 @@
       .dot.blue { background: var(--blue); }
       .dot.ok { background: var(--ok); }
 
-      .grid {
+      /* Right column stack */
+      .col-right {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-      }
-      @media (max-width: 900px) {
-        .grid { grid-template-columns: 1fr; }
+        grid-template-columns: 1fr;
+        gap: 14px;
       }
 
       .villagers {
@@ -214,101 +216,105 @@
     </div>
 
     <main style="display: none;">
-      <section class="panel">
-        <h2>控制台</h2>
+      <div class="layout">
+        <div class="col-left">
+          <section class="panel">
+            <h2>控制台</h2>
 
-        <div class="row">
-          <div>
-            <label for="numRed">红眼睛人数 N</label>
-            <input id="numRed" type="number" min="0" max="200" value="3" />
-          </div>
-          <div>
-            <label for="numBlue">蓝眼睛人数 M</label>
-            <input id="numBlue" type="number" min="0" max="200" value="2" />
-          </div>
-        </div>
-
-        <div class="row">
-          <div>
-            <label for="villagerMode">村民类型模式</label>
-            <select id="villagerMode">
-              <option value="mixed_ends" selected>混合：两端 OpenAI，其余 dummy</option>
-              <option value="all_dummy">全部 dummy（完美归纳）</option>
-              <option value="all_openai">全部 OpenAI（真实反应）</option>
-            </select>
-          </div>
-          <div>
-            <label for="openaiStyle">OpenAI 风格</label>
-            <select id="openaiStyle">
-              <option value="social" selected>群体社会行为（social）</option>
-              <option value="ordinary">普通人（ordinary）</option>
-              <option value="rational">理性人（rational）</option>
-              <option value="absolute_rational">绝对理性（absolute_rational）</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="btns">
-          <button id="btnInit">初始化村庄</button>
-          <button id="btnAnnounce">游客宣布</button>
-          <button id="btnNext">下一天</button>
-          <button id="btnRunAll">跑到结束</button>
-          <button id="btnReset">重置</button>
-        </div>
-
-        <div style="height: 12px"></div>
-
-        <div class="kpi">
-          <div class="card">
-            <div class="label">当前天数</div>
-            <div class="value" id="kpiDay">0</div>
-          </div>
-          <div class="card">
-            <div class="label">宣布状态</div>
-            <div class="value" id="kpiAnnounce">未宣布</div>
-          </div>
-          <div class="card">
-            <div class="label">知识层级</div>
-            <div class="value" id="kpiKnowledge">0</div>
-          </div>
-          <div class="card">
-            <div class="label">验证结果</div>
-            <div class="value" id="kpiVerify">—</div>
-          </div>
-        </div>
-
-        <div style="height: 12px"></div>
-        <div class="hint">
-          - “游客宣布”会把“至少有一个红眼睛”变成公共知识，使得计时与递归推理链条启动。<br />
-          - 你可以先初始化，再宣布，再按“下一天”观察推理日志逐步展开。
-        </div>
-      </section>
-
-      <section class="grid">
-        <section class="panel">
-          <h2>村民视角（当前仍在村庄）</h2>
-          <div id="villagers" class="villagers"></div>
-        </section>
-
-        <section class="panel">
-          <h2>推理与事件</h2>
-          <div class="split">
-            <div>
-              <div style="display:flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
-                <span class="pill"><span class="dot ok"></span>每日事件日志</span>
+            <div class="row">
+              <div>
+                <label for="numRed">红眼睛人数 N</label>
+                <input id="numRed" type="number" min="0" max="200" value="3" />
               </div>
-              <pre id="dailyLog"></pre>
-            </div>
-            <div>
-              <div style="display:flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
-                <span class="pill"><span class="dot red"></span>村民推理日志</span>
-                <select id="villagerSelect" aria-label="选择村民查看推理日志"></select>
+              <div>
+                <label for="numBlue">蓝眼睛人数 M</label>
+                <input id="numBlue" type="number" min="0" max="200" value="2" />
               </div>
-              <pre id="reasoningLog"></pre>
             </div>
-          </div>
-        </section>
-      </section>
+
+            <div class="row">
+              <div>
+                <label for="villagerMode">村民类型模式</label>
+                <select id="villagerMode">
+                  <option value="mixed_ends" selected>混合：两端 OpenAI，其余 dummy</option>
+                  <option value="all_dummy">全部 dummy（完美归纳）</option>
+                  <option value="all_openai">全部 OpenAI（真实反应）</option>
+                </select>
+              </div>
+              <div>
+                <label for="openaiStyle">OpenAI 风格</label>
+                <select id="openaiStyle">
+                  <option value="social" selected>群体社会行为（social）</option>
+                  <option value="ordinary">普通人（ordinary）</option>
+                  <option value="rational">理性人（rational）</option>
+                  <option value="absolute_rational">绝对理性（absolute_rational）</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="btns">
+              <button id="btnInit">初始化村庄</button>
+              <button id="btnAnnounce">游客宣布</button>
+              <button id="btnNext">下一天</button>
+              <button id="btnRunAll">跑到结束</button>
+              <button id="btnReset">重置</button>
+            </div>
+
+            <div style="height: 12px"></div>
+
+            <div class="kpi">
+              <div class="card">
+                <div class="label">当前天数</div>
+                <div class="value" id="kpiDay">0</div>
+              </div>
+              <div class="card">
+                <div class="label">宣布状态</div>
+                <div class="value" id="kpiAnnounce">未宣布</div>
+              </div>
+              <div class="card">
+                <div class="label">知识层级</div>
+                <div class="value" id="kpiKnowledge">0</div>
+              </div>
+              <div class="card">
+                <div class="label">验证结果</div>
+                <div class="value" id="kpiVerify">—</div>
+              </div>
+            </div>
+
+            <div style="height: 12px"></div>
+            <div class="hint">
+              - “游客宣布”会把“至少有一个红眼睛”变成公共知识，使得计时与递归推理链条启动。<br />
+              - 你可以先初始化，再宣布，再按“下一天”观察推理日志逐步展开。
+            </div>
+          </section>
+        </div>
+
+        <div class="col-right">
+          <section class="panel">
+            <h2>村民视角（当前仍在村庄）</h2>
+            <div id="villagers" class="villagers"></div>
+          </section>
+
+          <section class="panel">
+            <h2>推理与事件</h2>
+            <div class="split">
+              <div>
+                <div style="display:flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
+                  <span class="pill"><span class="dot ok"></span>每日事件日志</span>
+                </div>
+                <pre id="dailyLog"></pre>
+              </div>
+              <div>
+                <div style="display:flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
+                  <span class="pill"><span class="dot red"></span>村民推理日志</span>
+                  <select id="villagerSelect" aria-label="选择村民查看推理日志"></select>
+                </div>
+                <pre id="reasoningLog"></pre>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
     </main>
 
     <footer>
