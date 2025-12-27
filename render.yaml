@@ -1,12 +1,10 @@
+$schema: https://railway.app/railway.schema.json
 services:
-  - type: web
-    name: red-blud-eyes
-    runtime: python
-    pythonVersion: 3.11
-    startCommand: "python src/web_server.py"
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11
-      - key: PORT
-        value: 8000
-    plan: free
+  web:
+    build:
+      builder: dockerfile
+    deploy:
+      startCommand: python src/web_server.py
+    port: 8000
+    healthcheck:
+      path: /

@@ -71,35 +71,23 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       
-      - name: Deploy to Render via API
+      - name: Deploy to Railway
         env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          if [ -n "$RENDER_API_KEY" ]; then
-            echo "Attempting to trigger Render deployment via API..."
+          if [ -n "$RAILWAY_TOKEN" ]; then
+            echo "Installing Railway CLI..."
+            npm install -g @railway/cli
             
-            # Get list of services
-            SERVICES=$(curl -s -H "Authorization: Bearer $RENDER_API_KEY" \
-              https://api.render.com/v1/services)
+            echo "Authenticating with Railway..."
+            railway login --token "$RAILWAY_TOKEN"
             
-            # Find red-blud-eyes service ID
-            SERVICE_ID=$(echo "$SERVICES" | python3 -c "import sys, json; services=json.load(sys.stdin); [print(s['service']['id']) for s in services if 'red-blud-eyes' in s['service']['name']]" 2>/dev/null || echo "")
+            echo "Deploying to Railway..."
+            railway up --detach
             
-            if [ -n "$SERVICE_ID" ]; then
-              echo "Found service: $SERVICE_ID"
-              # Trigger deploy
-              DEPLOY_RESULT=$(curl -s -X POST \
-                "https://api.render.com/v1/services/$SERVICE_ID/deploys" \
-                -H "Authorization: Bearer $RENDER_API_KEY" \
-                -H "Content-Type: application/json")
-              echo "Deployment triggered: $DEPLOY_RESULT"
-              echo "✅ Deployment to Render triggered"
-            else
-              echo "⚠️ Service 'red-blud-eyes' not found on Render"
-              echo "Please create the service manually at https://dashboard.render.com"
-            fi
+            echo "✅ Deployment to Railway triggered"
           else
-            echo "⚠️ Skipping Render deployment: RENDER_API_KEY not configured"
+            echo "⚠️ Skipping Railway deployment: RAILWAY_TOKEN not configured"
           fi
 
   notify:
