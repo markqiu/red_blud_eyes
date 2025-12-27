@@ -70,10 +70,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
       - name: Sync variables to Railway via API
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          RAILWAY_ENV_NAME: ${{ secrets.RAILWAY_ENV_NAME }}
+          RAILWAY_SERVICE_NAME: ${{ secrets.RAILWAY_SERVICE_NAME }}
           SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
           SILICONFLOW_BASE_URL: ${{ secrets.SILICONFLOW_BASE_URL }}
           SILICONFLOW_MODEL: ${{ secrets.SILICONFLOW_MODEL }}
@@ -88,23 +93,29 @@ jobs:
             exit 0
           fi
           
-          # Get environment and service IDs
+          ENV_NAME_INPUT="${RAILWAY_ENV_NAME:-}"
+          SERVICE_NAME_INPUT="${RAILWAY_SERVICE_NAME:-}"
+
+          # Get environment and service IDs (optionally by name) using jq for reliability
           echo "Fetching project environments and services..."
           META=$(curl -s -X POST https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_TOKEN" \
             -H "Content-Type: application/json" \
             -d "{\"query\":\"query { project(id: \\\"$RAILWAY_PROJECT_ID\\\") { environments { edges { node { id name } } } services { edges { node { id name } } } } }\"}")
 
-          ENV_ID=$(echo "$META" | grep -o '"environments".*' | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-          SERVICE_ID=$(echo "$META" | grep -o '"services".*' | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+          ENV_ID=$(echo "$META" | jq -r --arg NAME "$ENV_NAME_INPUT" '(.data.project.environments.edges | map(.node)) | (if $NAME != "" then map(select(.name == $NAME)) else . end) | .[0].id // empty')
+          ENV_NAME=$(echo "$META" | jq -r --arg NAME "$ENV_NAME_INPUT" '(.data.project.environments.edges | map(.node)) | (if $NAME != "" then map(select(.name == $NAME)) else . end) | .[0].name // empty')
+
+          SERVICE_ID=$(echo "$META" | jq -r --arg NAME "$SERVICE_NAME_INPUT" '(.data.project.services.edges | map(.node)) | (if $NAME != "" then map(select(.name == $NAME)) else . end) | .[0].id // empty')
+          SERVICE_NAME=$(echo "$META" | jq -r --arg NAME "$SERVICE_NAME_INPUT" '(.data.project.services.edges | map(.node)) | (if $NAME != "" then map(select(.name == $NAME)) else . end) | .[0].name // empty')
 
           if [ -z "$ENV_ID" ] || [ -z "$SERVICE_ID" ]; then
             echo "Could not find environment or service ID. Response: $META"
             exit 1
           fi
 
-          echo "Environment ID: $ENV_ID"
-          echo "Service ID: $SERVICE_ID"
+          echo "Environment: ${ENV_NAME:-'(first)'} ($ENV_ID)"
+          echo "Service: ${SERVICE_NAME:-'(first)'} ($SERVICE_ID)"
           
           # Set each variable
           set_var() {
@@ -112,10 +123,17 @@ jobs:
             val="$2"
             if [ -n "$val" ]; then
               echo "Setting $key..."
-              curl -s -X POST https://backboard.railway.app/graphql/v2 \
+              RESP=$(curl -s -X POST https://backboard.railway.app/graphql/v2 \
                 -H "Authorization: Bearer $RAILWAY_TOKEN" \
                 -H "Content-Type: application/json" \
-                -d "{\"query\":\"mutation { variableUpsert(input: { projectId: \\\"$RAILWAY_PROJECT_ID\\\", environmentId: \\\"$ENV_ID\\\", serviceId: \\\"$SERVICE_ID\\\", name: \\\"$key\\\", value: \\\"$val\\\" }) { id } }\"}" > /dev/null
+                -d "{\"query\":\"mutation { variableUpsert(input: { projectId: \\\"$RAILWAY_PROJECT_ID\\\", environmentId: \\\"$ENV_ID\\\", serviceId: \\\"$SERVICE_ID\\\", name: \\\"$key\\\", value: \\\"$val\\\" }) { id } }\"}")
+
+              ERR=$(echo "$RESP" | jq -r '.errors[0].message // empty')
+              if [ -n "$ERR" ]; then
+                echo "Failed to set $key: $ERR"
+                echo "Response: $RESP"
+                exit 1
+              fi
             fi
           }
           
