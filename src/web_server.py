@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import threading
 import time
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -21,10 +22,13 @@ from pathlib import Path
 import traceback
 from typing import Any
 
-from .puzzle import Village
-from .reasoning import OpenAIReasoningPolicy, PerfectInductionPolicy, PolicyByVillagerType, ReasoningPolicy
-from .simulation import create_village
-from .env import load_dotenv
+# Add src to path for imports when running as script
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from src.puzzle import Village
+from src.reasoning import OpenAIReasoningPolicy, PerfectInductionPolicy, PolicyByVillagerType, ReasoningPolicy
+from src.simulation import create_village
+from src.env import load_dotenv
 
 
 _WEB_DIR = (Path(__file__).resolve().parent.parent / "web").resolve()
