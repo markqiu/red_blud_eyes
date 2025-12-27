@@ -69,23 +69,21 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Deploy to Railway
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - name: Deployment Info
         run: |
-          if [ -n "$RAILWAY_TOKEN" ]; then
-            echo "Installing Railway CLI..."
-            npm install -g @railway/cli
-            
-            echo "Deploying to Railway..."
-            railway up --detach
-            
-            echo "✅ Deployment to Railway triggered"
-          else
-            echo "⚠️ Skipping Railway deployment: RAILWAY_TOKEN not configured"
-          fi
+          echo "✅ Build successful!"
+          echo ""
+          echo "To deploy to Railway:"
+          echo "1. Visit https://railway.app/dashboard"
+          echo "2. Click 'New Project'"
+          echo "3. Select 'Deploy from GitHub repo'"
+          echo "4. Choose 'markqiu/red_blud_eyes'"
+          echo "5. Railway will automatically deploy using Dockerfile"
+          echo ""
+          echo "Alternative: Use Railway CLI locally"
+          echo "  railway login"
+          echo "  railway link"
+          echo "  railway up"
 
   notify:
     needs: [test, build, deploy]
