@@ -305,11 +305,14 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def main() -> None:
-    host = os.getenv("WEB_HOST", "127.0.0.1")
-    port = int(os.getenv("WEB_PORT", "8000"))
+    # Railway and other cloud platforms need 0.0.0.0
+    host = os.getenv("WEB_HOST", "0.0.0.0")
+    # Railway uses PORT env var
+    port = int(os.getenv("PORT", os.getenv("WEB_PORT", "8000")))
 
     server = ThreadingHTTPServer((host, port), Handler)
     print(f"Serving UI+API on http://{host}:{port} (web dir: {_WEB_DIR})")
+    print(f"Health check available at: http://{host}:{port}/api/health")
     server.serve_forever()
 
 

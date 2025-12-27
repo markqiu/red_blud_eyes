@@ -21,9 +21,9 @@ ENV PORT=8000
 # Expose port
 EXPOSE 8000
 
-# Health check
+# Health check using curl (lighter than requests)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD python -c "import requests; requests.get('http://localhost:8000', timeout=5)"
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=5)"
 
 # Run the application
 CMD ["python", "src/web_server.py"]
