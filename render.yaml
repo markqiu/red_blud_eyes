@@ -1,9 +1,12 @@
-#!/bin/bash
-set -e
-
-# Render deployment script
-# Install dependencies using uv
-uv sync
-
-# Run tests to ensure quality
-uv run pytest -q
+services:
+  - type: web
+    name: red-blud-eyes
+    runtime: python
+    pythonVersion: 3.11
+    startCommand: "python src/web_server.py"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: PORT
+        value: 8000
+    plan: free

@@ -71,15 +71,35 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       
-      - name: Deploy to Render
+      - name: Deploy to Render via API
         env:
-          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: |
-          if [ -n "$RENDER_DEPLOY_HOOK" ]; then
-            curl "$RENDER_DEPLOY_HOOK"
-            echo "✅ Deployment triggered on Render"
+          if [ -n "$RENDER_API_KEY" ]; then
+            echo "Attempting to trigger Render deployment via API..."
+            
+            # Get list of services
+            SERVICES=$(curl -s -H "Authorization: Bearer $RENDER_API_KEY" \
+              https://api.render.com/v1/services)
+            
+            # Find red-blud-eyes service ID
+            SERVICE_ID=$(echo "$SERVICES" | python3 -c "import sys, json; services=json.load(sys.stdin); [print(s['service']['id']) for s in services if 'red-blud-eyes' in s['service']['name']]" 2>/dev/null || echo "")
+            
+            if [ -n "$SERVICE_ID" ]; then
+              echo "Found service: $SERVICE_ID"
+              # Trigger deploy
+              DEPLOY_RESULT=$(curl -s -X POST \
+                "https://api.render.com/v1/services/$SERVICE_ID/deploys" \
+                -H "Authorization: Bearer $RENDER_API_KEY" \
+                -H "Content-Type: application/json")
+              echo "Deployment triggered: $DEPLOY_RESULT"
+              echo "✅ Deployment to Render triggered"
+            else
+              echo "⚠️ Service 'red-blud-eyes' not found on Render"
+              echo "Please create the service manually at https://dashboard.render.com"
+            fi
           else
-            echo "⚠️ Skipping Render deployment: RENDER_DEPLOY_HOOK not configured"
+            echo "⚠️ Skipping Render deployment: RENDER_API_KEY not configured"
           fi
 
   notify:
