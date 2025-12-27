@@ -126,7 +126,7 @@ jobs:
               RESP=$(curl -s -X POST https://backboard.railway.app/graphql/v2 \
                 -H "Authorization: Bearer $RAILWAY_TOKEN" \
                 -H "Content-Type: application/json" \
-                -d "{\"query\":\"mutation { variableUpsert(input: { projectId: \\\"$RAILWAY_PROJECT_ID\\\", environmentId: \\\"$ENV_ID\\\", serviceId: \\\"$SERVICE_ID\\\", name: \\\"$key\\\", value: \\\"$val\\\" }) { id } }\"}")
+                -d "{\"query\":\"mutation { variableUpsert(input: { projectId: \\\"$RAILWAY_PROJECT_ID\\\", environmentId: \\\"$ENV_ID\\\", serviceId: \\\"$SERVICE_ID\\\", name: \\\"$key\\\", value: \\\"$val\\\" }) }\"}")
 
               ERR=$(echo "$RESP" | jq -r '.errors[0].message // empty')
               if [ -n "$ERR" ]; then
