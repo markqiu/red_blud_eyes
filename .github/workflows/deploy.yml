@@ -88,20 +88,22 @@ jobs:
             exit 0
           fi
           
-          # Get service ID for the project
-          echo "Fetching services for project..."
-          SERVICES=$(curl -s -X POST https://backboard.railway.app/graphql/v2 \
+          # Get environment and service IDs
+          echo "Fetching project environments and services..."
+          META=$(curl -s -X POST https://backboard.railway.app/graphql/v2 \
             -H "Authorization: Bearer $RAILWAY_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "{\"query\":\"query { project(id: \\\"$RAILWAY_PROJECT_ID\\\") { services { edges { node { id name } } } } }\"}")
-          
-          SERVICE_ID=$(echo "$SERVICES" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
-          
-          if [ -z "$SERVICE_ID" ]; then
-            echo "Could not find service ID. Response: $SERVICES"
+            -d "{\"query\":\"query { project(id: \\\"$RAILWAY_PROJECT_ID\\\") { environments { edges { node { id name } } } services { edges { node { id name } } } } }\"}")
+
+          ENV_ID=$(echo "$META" | grep -o '"environments".*' | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+          SERVICE_ID=$(echo "$META" | grep -o '"services".*' | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+
+          if [ -z "$ENV_ID" ] || [ -z "$SERVICE_ID" ]; then
+            echo "Could not find environment or service ID. Response: $META"
             exit 1
           fi
-          
+
+          echo "Environment ID: $ENV_ID"
           echo "Service ID: $SERVICE_ID"
           
           # Set each variable
@@ -113,7 +115,7 @@ jobs:
               curl -s -X POST https://backboard.railway.app/graphql/v2 \
                 -H "Authorization: Bearer $RAILWAY_TOKEN" \
                 -H "Content-Type: application/json" \
-                -d "{\"query\":\"mutation { variableUpsert(input: { projectId: \\\"$RAILWAY_PROJECT_ID\\\", serviceId: \\\"$SERVICE_ID\\\", name: \\\"$key\\\", value: \\\"$val\\\" }) { id } }\"}" > /dev/null
+                -d "{\"query\":\"mutation { variableUpsert(input: { projectId: \\\"$RAILWAY_PROJECT_ID\\\", environmentId: \\\"$ENV_ID\\\", serviceId: \\\"$SERVICE_ID\\\", name: \\\"$key\\\", value: \\\"$val\\\" }) { id } }\"}" > /dev/null
             fi
           }
           
