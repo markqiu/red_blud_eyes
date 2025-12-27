@@ -67,55 +67,66 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
-    env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
     steps:
       - uses: actions/checkout@v3
 
-      - name: Check Railway token
-        run: |
-          if [ -z "$RAILWAY_TOKEN" ]; then
-            echo "RAILWAY_TOKEN not set; skipping env sync." && exit 0
-          fi
-          echo "Railway token configured"
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Link Railway project
+      - name: Sync variables to Railway via API
         env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
           RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-        run: |
-          if [ -z "$RAILWAY_PROJECT_ID" ]; then
-            echo "RAILWAY_PROJECT_ID not set; skipping env sync." && exit 0
-          fi
-          railway link --project "$RAILWAY_PROJECT_ID"
-
-      - name: Sync variables to service
-        env:
           SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
           SILICONFLOW_BASE_URL: ${{ secrets.SILICONFLOW_BASE_URL }}
           SILICONFLOW_MODEL: ${{ secrets.SILICONFLOW_MODEL }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
           OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+          OPENAI_CERTAINTY_THRESHOLD: ${{ secrets.OPENAI_CERTAINTY_THRESHOLD }}
           APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
         run: |
-          set_var() { 
+          if [ -z "$RAILWAY_TOKEN" ] || [ -z "$RAILWAY_PROJECT_ID" ]; then
+            echo "RAILWAY_TOKEN or RAILWAY_PROJECT_ID not set; skipping env sync."
+            exit 0
+          fi
+          
+          # Get service ID for the project
+          echo "Fetching services for project..."
+          SERVICES=$(curl -s -X POST https://backboard.railway.app/graphql/v2 \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"query\":\"query { project(id: \\\"$RAILWAY_PROJECT_ID\\\") { services { edges { node { id name } } } } }\"}")
+          
+          SERVICE_ID=$(echo "$SERVICES" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+          
+          if [ -z "$SERVICE_ID" ]; then
+            echo "Could not find service ID. Response: $SERVICES"
+            exit 1
+          fi
+          
+          echo "Service ID: $SERVICE_ID"
+          
+          # Set each variable
+          set_var() {
             key="$1"
             val="$2"
-            if [ -n "$val" ]; then 
-              echo "Setting $key"
-              railway variables --set "$key=$val"
+            if [ -n "$val" ]; then
+              echo "Setting $key..."
+              curl -s -X POST https://backboard.railway.app/graphql/v2 \
+                -H "Authorization: Bearer $RAILWAY_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "{\"query\":\"mutation { variableUpsert(input: { projectId: \\\"$RAILWAY_PROJECT_ID\\\", serviceId: \\\"$SERVICE_ID\\\", name: \\\"$key\\\", value: \\\"$val\\\" }) { id } }\"}" > /dev/null
             fi
           }
-          set_var SILICONFLOW_API_KEY "$SILICONFLOW_API_KEY"
-          set_var SILICONFLOW_BASE_URL "$SILICONFLOW_BASE_URL"
-          set_var SILICONFLOW_MODEL "$SILICONFLOW_MODEL"
-          set_var OPENAI_API_KEY "$OPENAI_API_KEY"
-          set_var OPENAI_BASE_URL "$OPENAI_BASE_URL"
-          set_var OPENAI_MODEL "$OPENAI_MODEL"
-          set_var APP_PASSWORD "$APP_PASSWORD"
+          
+          set_var "SILICONFLOW_API_KEY" "$SILICONFLOW_API_KEY"
+          set_var "SILICONFLOW_BASE_URL" "$SILICONFLOW_BASE_URL"
+          set_var "SILICONFLOW_MODEL" "$SILICONFLOW_MODEL"
+          set_var "OPENAI_API_KEY" "$OPENAI_API_KEY"
+          set_var "OPENAI_BASE_URL" "$OPENAI_BASE_URL"
+          set_var "OPENAI_MODEL" "$OPENAI_MODEL"
+          set_var "OPENAI_CERTAINTY_THRESHOLD" "$OPENAI_CERTAINTY_THRESHOLD"
+          set_var "APP_PASSWORD" "$APP_PASSWORD"
+          
+          echo "✓ Variables synced successfully"
 
   deploy:
     needs: build
