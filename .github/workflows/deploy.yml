@@ -20,6 +20,16 @@ jobs:
         with:
           python-version: "3.11"
       
+      - name: Create .env from secrets
+        run: |
+          cat > .env << 'EOF'
+          SILICONFLOW_BASE_URL=${{ secrets.SILICONFLOW_BASE_URL || 'https://api.siliconflow.cn/' }}
+          SILICONFLOW_API_KEY=${{ secrets.SILICONFLOW_API_KEY || '' }}
+          SILICONFLOW_MODEL=${{ secrets.SILICONFLOW_MODEL || 'deepseek-ai/DeepSeek-V3.2' }}
+          OPENAI_CERTAINTY_THRESHOLD=${{ secrets.OPENAI_CERTAINTY_THRESHOLD || '0.95' }}
+          RENDER_API_KEY=${{ secrets.RENDER_API_KEY || '' }}
+          EOF
+      
       - name: Install dependencies
         run: uv pip install -r requirements.txt
       
@@ -40,13 +50,15 @@ jobs:
         with:
           python-version: "3.11"
       
-      - name: Create .env placeholder
+      - name: Create .env from secrets
         run: |
-          echo "APP_PASSWORD=${{ secrets.APP_PASSWORD || 'redblue' }}" > .env
-          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY || '' }}" >> .env
-          echo "OPENAI_MODEL=${{ secrets.OPENAI_MODEL || 'gpt-4' }}" >> .env
-          echo "SILICONFLOW_API_KEY=${{ secrets.SILICONFLOW_API_KEY || '' }}" >> .env
-          echo "SILICONFLOW_MODEL=${{ secrets.SILICONFLOW_MODEL || 'deepseek-v3' }}" >> .env
+          cat > .env << 'EOF'
+          SILICONFLOW_BASE_URL=${{ secrets.SILICONFLOW_BASE_URL || 'https://api.siliconflow.cn/' }}
+          SILICONFLOW_API_KEY=${{ secrets.SILICONFLOW_API_KEY || '' }}
+          SILICONFLOW_MODEL=${{ secrets.SILICONFLOW_MODEL || 'deepseek-ai/DeepSeek-V3.2' }}
+          OPENAI_CERTAINTY_THRESHOLD=${{ secrets.OPENAI_CERTAINTY_THRESHOLD || '0.95' }}
+          RENDER_API_KEY=${{ secrets.RENDER_API_KEY || '' }}
+          EOF
       
       - name: Build dependencies
         run: uv pip install -r requirements.txt
@@ -56,47 +68,44 @@ jobs:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     
-    # 支持多个部署平台的矩阵配置
-    strategy:
-      matrix:
-        platform: [render]  # 可添加: railway, heroku 等
-    
     steps:
       - uses: actions/checkout@v3
       
       - name: Deploy to Render
-        if: matrix.platform == 'render'
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
           if [ -n "$RENDER_DEPLOY_HOOK" ]; then
             curl "$RENDER_DEPLOY_HOOK"
+            echo "✅ Deployment triggered on Render"
           else
-            echo "Skipping Render deployment: RENDER_DEPLOY_HOOK not configured"
-          fi
-      
-      - name: Deploy to Railway
-        if: matrix.platform == 'railway'
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          if [ -n "$RAILWAY_TOKEN" ]; then
-            npm i -g @railway/cli
-            railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
-            railway deploy
-          else
-            echo "Skipping Railway deployment: RAILWAY_TOKEN not configured"
+            echo "⚠️ Skipping Render deployment: RENDER_DEPLOY_HOOK not configured"
           fi
 
   notify:
-    needs: [test, deploy]
+    needs: [test, build, deploy]
     runs-on: ubuntu-latest
     if: always()
     steps:
-      - name: Check deployment status
+      - name: Check build status
         run: |
-          if [ "${{ needs.deploy.result }}" == "success" ]; then
-            echo "✅ Deployment successful!"
+          echo "=== CI/CD Status ==="
+          if [ "${{ needs.test.result }}" == "success" ]; then
+            echo "✅ Tests passed"
           else
-            echo "⚠️ Deployment skipped or failed (check platform configuration)"
+            echo "❌ Tests failed"
+          fi
+          
+          if [ "${{ needs.build.result }}" == "success" ]; then
+            echo "✅ Build successful"
+          else
+            echo "❌ Build failed"
+          fi
+          
+          if [ "${{ needs.deploy.result }}" == "success" ]; then
+            echo "✅ Deployment successful"
+          elif [ "${{ needs.deploy.result }}" == "skipped" ]; then
+            echo "⏭️ Deployment skipped (RENDER_DEPLOY_HOOK not configured)"
+          else
+            echo "❌ Deployment failed"
           fi
