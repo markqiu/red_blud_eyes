@@ -79,9 +79,6 @@ jobs:
             echo "Installing Railway CLI..."
             npm install -g @railway/cli
             
-            echo "Authenticating with Railway..."
-            railway login --token "$RAILWAY_TOKEN"
-            
             echo "Deploying to Railway..."
             railway up --detach
             
