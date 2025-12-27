@@ -48,7 +48,8 @@
         margin: 0 auto;
       }
 
-      @media (max-width: 980px) {
+      /* Keep two-column layout on typical laptop widths */
+      @media (max-width: 800px) {
         main { grid-template-columns: 1fr; }
       }
 
@@ -173,7 +174,7 @@
         grid-template-columns: 1fr 1fr;
         gap: 12px;
       }
-      @media (max-width: 980px) {
+      @media (max-width: 800px) {
         .split { grid-template-columns: 1fr; }
       }
 

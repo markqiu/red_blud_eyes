@@ -118,13 +118,22 @@ def _village_to_state(village: Village, num_red: int, num_blue: int) -> dict[str
 
 def _build_reasoning_policy(openai_style: str) -> ReasoningPolicy:
     # Keep mapping names aligned with existing Python policies.
+    # Graceful fallback: if no API key configured, map 'openai' to PerfectInductionPolicy
+    # so the app remains usable without external services.
+    has_ai_key = bool(os.getenv("OPENAI_API_KEY") or os.getenv("SILICONFLOW_API_KEY"))
+    openai_policy: ReasoningPolicy
+    if has_ai_key:
+        openai_policy = OpenAIReasoningPolicy(
+            style=openai_style,
+            align_to_standard_proof=(openai_style == "absolute_rational"),
+        )
+    else:
+        openai_policy = PerfectInductionPolicy()
+
     return PolicyByVillagerType(
         {
             "dummy": PerfectInductionPolicy(),
-            "openai": OpenAIReasoningPolicy(
-                style=openai_style,
-                align_to_standard_proof=(openai_style == "absolute_rational"),
-            ),
+            "openai": openai_policy,
         },
         default=PerfectInductionPolicy(),
     )
@@ -242,8 +251,11 @@ class Handler(SimpleHTTPRequestHandler):
         )
 
         # Add an initial log line so the UI always has context.
+        # Informative startup log, including whether AI reasoning is active.
+        ai_active = bool(os.getenv("OPENAI_API_KEY") or os.getenv("SILICONFLOW_API_KEY"))
+        ai_note = "（OpenAI推理启用）" if ai_active else "（未配置API Key，已回退到完美归纳）"
         village.daily_log.append(
-            f"[Backend] 初始化：红眼睛 {num_red} 人，蓝眼睛 {num_blue} 人；mode={mode}；openaiStyle={openai_style}"
+            f"[Backend] 初始化：红眼睛 {num_red} 人，蓝眼睛 {num_blue} 人；mode={mode}；openaiStyle={openai_style} {ai_note}"
         )
 
         with APP_STATE.lock:
