@@ -3,7 +3,7 @@ builder = "dockerfile"
 
 [deploy]
 startCommand = "python src/web_server.py"
-healthcheckPath = "/"
+healthcheckPath = "/api/health"
 healthcheckTimeout = 100
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
