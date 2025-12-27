@@ -89,7 +89,7 @@ jobs:
           if [ -z "$RAILWAY_PROJECT_ID" ]; then
             echo "RAILWAY_PROJECT_ID not set; skipping env sync." && exit 0
           fi
-          railway link "$RAILWAY_PROJECT_ID"
+          railway link --project "$RAILWAY_PROJECT_ID"
 
       - name: Sync variables to service
         env:
