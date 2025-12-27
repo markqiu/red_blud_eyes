@@ -48,10 +48,7 @@
         margin: 0 auto;
       }
 
-      /* Keep two-column layout except on very small screens */
-      @media (max-width: 600px) {
-        main { grid-template-columns: 1fr; }
-      }
+      /* Always keep two-column layout (remove responsive collapse) */
 
       .panel {
         background: rgba(18, 26, 51, 0.78);
@@ -174,9 +171,7 @@
         grid-template-columns: 1fr 1fr;
         gap: 12px;
       }
-      @media (max-width: 600px) {
-        .split { grid-template-columns: 1fr; }
-      }
+      /* Keep split two-column as well */
 
       pre {
         margin: 0;
