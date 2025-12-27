@@ -63,6 +63,54 @@ jobs:
       - name: Build dependencies
         run: uv pip install --system -r requirements.txt
 
+  sync-env:
+    needs: build
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Login to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "RAILWAY_TOKEN not set; skipping env sync." && exit 0
+          fi
+          railway login --token "$RAILWAY_TOKEN"
+
+      - name: Link Railway project
+        env:
+          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+        run: |
+          if [ -z "$RAILWAY_PROJECT_ID" ]; then
+            echo "RAILWAY_PROJECT_ID not set; skipping env sync." && exit 0
+          fi
+          railway link --project "$RAILWAY_PROJECT_ID"
+
+      - name: Sync variables to 'web' service
+        env:
+          SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+          SILICONFLOW_BASE_URL: ${{ secrets.SILICONFLOW_BASE_URL }}
+          SILICONFLOW_MODEL: ${{ secrets.SILICONFLOW_MODEL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+          APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
+        run: |
+          SERVICE=web
+          set_var() { key="$1"; val="$2"; if [ -n "$val" ]; then railway variables set "$key=$val" --service "$SERVICE"; fi; }
+          set_var SILICONFLOW_API_KEY "$SILICONFLOW_API_KEY"
+          set_var SILICONFLOW_BASE_URL "$SILICONFLOW_BASE_URL"
+          set_var SILICONFLOW_MODEL "$SILICONFLOW_MODEL"
+          set_var OPENAI_API_KEY "$OPENAI_API_KEY"
+          set_var OPENAI_BASE_URL "$OPENAI_BASE_URL"
+          set_var OPENAI_MODEL "$OPENAI_MODEL"
+          set_var APP_PASSWORD "$APP_PASSWORD"
+
   deploy:
     needs: build
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
@@ -86,7 +134,7 @@ jobs:
           echo "  railway up"
 
   notify:
-    needs: [test, build, deploy]
+    needs: [test, build, sync-env, deploy]
     runs-on: ubuntu-latest
     if: always()
     steps:
